@@ -4,7 +4,7 @@
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>麻雀大会スコア入力 (V19.0 2カラム・1行表示版)</title>
+    <title>麻雀大会スコア入力 (V20.0 最終版)</title>
     <style>
         body { font-family: -apple-system, sans-serif; padding: 10px; background: #f0f2f5; margin: 0; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
@@ -27,14 +27,14 @@
         
         .player-label {
             display: block;
-            font-size: 0.85em;
+            font-size: 0.9em; /* 少し大きくして視認性アップ */
             line-height: 1.4;
             margin-bottom: 5px;
-            height: 1.5em; /* 1行分に変更 */
+            height: 1.5em; 
             font-weight: bold;
             overflow: hidden;
-            text-overflow: ellipsis; /* 長い名前は「...」で省略 */
-            white-space: nowrap;      /* 改行を禁止 */
+            text-overflow: ellipsis; 
+            white-space: nowrap;      
         }
 
         h2 { margin-top: 0; color: #1a73e8; font-size: 1.2em; text-align: center; }
@@ -85,7 +85,6 @@
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyRmIsWptfSV_GraQOOT-SC8HLIfirXp2C_sFjzDJ9c28HAeDRRceH60cgqmvqwL7W7tw/exec"; 
     let gData = {};
-    const SEATS = ["東", "南", "西", "北"];
 
     window.onload = function() { fetchInitialData(); };
 
@@ -123,6 +122,7 @@
         document.getElementById('startBtn').disabled = false;
         const container = document.getElementById('memberSelects');
         container.innerHTML = "";
+        const SEATS = ["東", "南", "西", "北"];
         SEATS.forEach(seat => {
             const div = document.createElement('div');
             div.style.marginBottom = "8px";
@@ -147,6 +147,9 @@
         });
     }
 
+    /**
+     * 【修正】名前の前の座順表示を削除
+     */
     function showScoreInput(players) {
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'block';
@@ -158,10 +161,9 @@
             const div = document.createElement('div');
             div.className = "player-box";
 
-            // 名前を1行で表示するラベル
             const label = document.createElement('span');
             label.className = "player-label";
-            label.textContent = `${SEATS[i]}: ${name}`;
+            label.textContent = name; // 「東：」などを削除し、名前のみを表示
             
             const input = document.createElement('input');
             input.type = "number";
