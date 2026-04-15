@@ -55,10 +55,12 @@
 </div>
 
 <script>
-    // 【更新】新デプロイURLを設定
+    // 確定したGASデプロイURL
     const GAS_URL = "https://script.google.com/macros/s/AKfycby70UbRYGxpboOs58NIAFuGXZvzsL1N3oiU4p7VOLC2Ica_NUu8udrTze1Gdxuo7ud9iw/exec"; 
     let gData = {};
+
     window.onload = function() { fetchInitialData(); };
+
     async function fetchInitialData(callback) {
         try {
             const res = await fetch(GAS_URL);
@@ -67,8 +69,9 @@
             sel.options[0].text = "卓を選択してください";
             sel.disabled = false;
             if(callback) callback();
-        } catch (e) { alert("通信エラー：デプロイ設定を確認してください"); }
+        } catch (e) { alert("通信エラー：GAS側のデプロイ設定を確認してください"); }
     }
+
     function initView() {
         const table = document.getElementById('tableSelect').value;
         if (!table || !gData.tableStatus) return;
@@ -76,6 +79,7 @@
         if (status && status.players && status.players.length === 4) { showScoreInput(status.players); } 
         else { showMemberSelect(); }
     }
+
     async function cancelSelection() {
         if (!confirm("メンバー選定をやり直しますか？")) return;
         const table = document.getElementById('tableSelect').value;
@@ -86,6 +90,7 @@
             fetchInitialData(() => initView());
         } catch (e) { alert("エラーが発生しました"); btn.disabled = false; }
     }
+
     function showMemberSelect() {
         document.getElementById('stepMember').style.display = 'block';
         document.getElementById('stepScore').style.display = 'none';
@@ -100,6 +105,7 @@
         });
         syncSelects();
     }
+
     function syncSelects() {
         const selects = document.querySelectorAll('.p-name');
         const busy = gData.busyPlayers || [];
@@ -115,18 +121,36 @@
             });
         });
     }
+
+    // XSS対策：textContentとappendChildを使用
     function showScoreInput(players) {
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'block';
         const container = document.getElementById('scoreInputs');
         container.innerHTML = ""; 
         players.forEach(name => {
-            const div = document.createElement('div'); div.className = "player-box";
-            div.innerHTML = `<span class="player-label">${name}</span><input type="number" class="p-score" data-name="${name}" inputmode="numeric" placeholder="0" oninput="calcTotal()">`;
+            const div = document.createElement('div'); 
+            div.className = "player-box";
+
+            const label = document.createElement('span');
+            label.className = "player-label";
+            label.textContent = name;
+
+            const input = document.createElement('input');
+            input.type = "number";
+            input.className = "p-score";
+            input.setAttribute('data-name', name);
+            input.setAttribute('inputmode', 'numeric');
+            input.placeholder = "0";
+            input.oninput = calcTotal;
+
+            div.appendChild(label);
+            div.appendChild(input);
             container.appendChild(div);
         });
         calcTotal();
     }
+
     function calcTotal() {
         const inputs = document.querySelectorAll('.p-score');
         let total = 0;
@@ -138,6 +162,7 @@
         else if (diff < 0) { sub.textContent = `(超過: ${Math.abs(diff).toLocaleString()})`; statusBox.className = "diff-plus"; }
         else { main.textContent = `合計: 100,000 (OK!)`; sub.textContent = ""; statusBox.className = "diff-ok"; }
     }
+
     async function startMatch() {
         const table = document.getElementById('tableSelect').value;
         const names = Array.from(document.querySelectorAll('.p-name')).map(s => s.value);
@@ -148,6 +173,7 @@
             fetchInitialData(() => initView());
         } catch (e) { alert("確定エラー"); btn.disabled = false; }
     }
+
     async function submitScores() {
         const table = document.getElementById('tableSelect').value;
         const inputs = document.querySelectorAll('.p-score');
