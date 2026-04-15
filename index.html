@@ -1,26 +1,27 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>麻雀大会スコア入力</title>
+    <title>麻雀大会スコア入力 (V12.0 API連携版)</title>
     <style>
-        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f0f2f5; color: #333; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .player-box { background: #fafafa; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #eee; }
+        body { font-family: -apple-system, "Segoe UI", "Helvetica Neue", sans-serif; padding: 15px; background: #f0f2f5; color: #333; line-height: 1.6; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
+        .player-box { background: #fafafa; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #eee; }
+        h2 { margin-top: 0; color: #1a73e8; font-size: 1.4em; }
+        h3 { font-size: 1em; color: #555; margin-bottom: 12px; border-left: 4px solid #1a73e8; padding-left: 8px; }
         select, input { width: 100%; padding: 14px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 16px; margin-bottom: 10px; }
-        select:disabled { background-color: #eee; cursor: wait; }
-        button { width: 100%; padding: 16px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        select:disabled { background-color: #eee; cursor: not-allowed; color: #888; }
+        button { width: 100%; padding: 16px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
         button:disabled { background: #ccc; cursor: not-allowed; }
-        .disabled-opt { color: #999; background: #eee; }
-        .error { color: #d93025; font-weight: bold; text-align: center; margin-top: 10px; font-size: 14px; }
-        #roundInfo { font-weight: bold; color: #1a73e8; margin-bottom: 10px; font-size: 1.1em; }
-        #scoreStatus { background: #e8f0fe; padding: 12px 15px; border-radius: 8px; margin-bottom: 10px; font-weight: bold; text-align: left; color: #1a73e8; font-size: 0.95em; border-left: 5px solid #1a73e8; }
-        .diff-plus { color: #d93025 !important; background: #fce8e6 !important; }
-        .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; }
-        .diff-ok { color: #2e7d32 !important; background: #e6f4ea !important; }
-        h3 { font-size: 1em; color: #555; margin-bottom: 10px; border-left: 4px solid #1a73e8; padding-left: 8px; }
+        #roundInfo { font-weight: bold; color: #1a73e8; margin-bottom: 15px; font-size: 1.1em; min-height: 1.5em; }
+        #scoreStatus { background: #e8f0fe; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; text-align: left; color: #1a73e8; font-size: 0.95em; border-left: 5px solid #1a73e8; }
+        .diff-plus { color: #d93025 !important; background: #fce8e6 !important; border-left-color: #d93025 !important; }
+        .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; border-left-color: #1a73e8 !important; }
+        .diff-ok { color: #2e7d32 !important; background: #e6f4ea !important; border-left-color: #2e7d32 !important; }
+        .error-msg { color: #d93025; font-weight: bold; text-align: center; margin-top: 10px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -44,13 +45,15 @@
         <h3>スコア入力</h3>
         <div id="scoreStatus">合計: 0 / 100,000 (不足: 100,000)</div>
         <div id="scoreInputs"></div>
-        <div id="status" class="error"></div>
+        <div id="status" class="error-msg"></div>
         <button id="submitBtn" onclick="submitScores()">スコア送信</button>
     </div>
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw9-O0sEzbMnx8HF3ItlGEeiN_TsfN-kJwVLf_KOy7tVEQAh78oEEVsnt9IviyYmPYe/exec"; 
+    // 【重要】ここにデプロイした最新のGASウェブアプリURLを貼り付けてください
+    const GAS_URL = "https://script.google.com/macros/s/ここにURLを貼る/exec"; 
+    
     let gData = {};
     const SEATS = ["東", "南", "西", "北"];
 
@@ -58,43 +61,65 @@
         fetchInitialData();
     };
 
+    /**
+     * データ取得 (GET)
+     * 通信遅延対策として物理ロックとデバッグログを強化
+     */
     async function fetchInitialData(callback) {
         const tableSelect = document.getElementById('tableSelect');
         tableSelect.disabled = true;
+        tableSelect.options[0].text = "データ取得中...";
+        
+        console.log("GAS通信開始...");
+
         try {
             const response = await fetch(GAS_URL);
-            gData = await response.json();
-            tableSelect.disabled = false;
+            if (!response.ok) throw new Error(`HTTPエラー! ステータス: ${response.status}`);
+            
+            const data = await response.json();
+            console.log("GASからのレスポンス内容:", data);
+
+            gData = data;
+
+            // データの準備が「完全に」整ってから解除
             tableSelect.options[0].text = "卓を選択してください";
+            tableSelect.disabled = false;
+            
             if(callback) callback();
         } catch (err) {
-            alert("通信エラー: " + err);
+            console.error("fetchInitialDataエラー:", err);
+            tableSelect.options[0].text = "通信エラーが発生しました";
+            alert("GASからのデータ取得に失敗しました。URLの確認と再読み込みを行ってください。\n詳細: " + err);
         }
     }
 
-    function resetUI() {
-        document.getElementById('tableSelect').value = "";
-        document.getElementById('roundInfo').textContent = "";
-        document.getElementById('stepMember').style.display = 'none';
-        document.getElementById('stepScore').style.display = 'none';
-        document.getElementById('status').textContent = "";
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('startBtn').disabled = false;
-    }
-
+    /**
+     * 画面表示の初期化
+     * エンジニア指摘: 通信完了前やデータ不備時のガード節を強化
+     */
     function initView() {
-        const table = document.getElementById('tableSelect').value;
+        const tableSelect = document.getElementById('tableSelect');
+        const table = tableSelect.value;
         const info = document.getElementById('roundInfo');
         const sMem = document.getElementById('stepMember');
         const sSco = document.getElementById('stepScore');
-        if (!table) { sMem.style.display = 'none'; sSco.style.display = 'none'; info.textContent = ""; return; }
+
+        // 【ガード節】gDataが未ロード、または通信エラー時は処理を中断
+        if (!table || !gData || !gData.tableStatus) {
+            console.warn("データが準備できていないため、処理を中断しました。");
+            if (table) tableSelect.value = ""; // 選択を強制リセット
+            sMem.style.display = 'none';
+            sSco.style.display = 'none';
+            info.textContent = "";
+            return;
+        }
 
         const tableStatus = gData.tableStatus[table];
-        if (tableStatus && tableStatus.players[0] !== "") {
+        if (tableStatus && tableStatus.players[0] && tableStatus.players[0] !== "") {
             info.textContent = "第" + tableStatus.round + "回戦 対局中";
             showScoreInput(tableStatus.players);
         } else {
-            const currentRound = gData.completedRounds[table] + 1;
+            const currentRound = (gData.completedRounds[table] || 0) + 1;
             info.textContent = "第" + currentRound + "回戦 準備";
             showMemberSelect();
         }
@@ -118,6 +143,7 @@
         const selects = document.querySelectorAll('.p-name');
         const busyInOtherTables = gData.busyPlayers || [];
         const selectedInCurrentTable = Array.from(selects).map(s => s.value).filter(v => v !== "");
+        
         selects.forEach(sel => {
             const currentVal = sel.value;
             sel.innerHTML = '<option value="">選択してください</option>';
@@ -128,12 +154,14 @@
                     sel.add(opt);
                 }
             });
+            // 他の風で選択済みの人は無効化して表示
             gData.playerNames.forEach(n => {
                 if (!busyInOtherTables.includes(n) && selectedInCurrentTable.includes(n) && n !== currentVal) {
                     const opt = new Option(n + " (選択中)", n);
                     opt.disabled = true; sel.add(opt);
                 }
             });
+            // 他の卓で対局中の人は無効化して表示
             gData.playerNames.forEach(n => {
                 if (busyInOtherTables.includes(n)) {
                     const opt = new Option(n + " (対局中)", n);
@@ -151,7 +179,7 @@
         players.forEach((name, i) => {
             const div = document.createElement('div');
             div.className = "player-box";
-            div.innerHTML = `<label>${SEATS[i]}家: <b>${name}</b></label><input type="number" class="p-score" data-name="${name}" placeholder="素点" inputmode="numeric" oninput="calcTotal()">`;
+            div.innerHTML = `<label>${SEATS[i]}家: <b>${name}</b></label><input type="number" class="p-score" data-name="${name}" placeholder="点数を入力" inputmode="numeric" oninput="calcTotal()">`;
             container.appendChild(div);
         });
         calcTotal();
@@ -174,18 +202,24 @@
         const table = document.getElementById('tableSelect').value;
         const names = Array.from(document.querySelectorAll('.p-name')).map(s => s.value);
         const btn = document.getElementById('startBtn');
-        if (!gData.completedRounds) { alert("読み込み中です"); return; }
-        const round = gData.completedRounds[table] + 1;
+        
+        if (!gData.completedRounds) { alert("データ読み込み中です"); return; }
+        const round = (gData.completedRounds[table] || 0) + 1;
         if (names.includes("") || new Set(names).size !== 4) { alert("4名選んでください"); return; }
+        
         btn.disabled = true;
         try {
-            await fetch(GAS_URL, {
+            const res = await fetch(GAS_URL, {
                 method: "POST",
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify({ action: "commitMembers", tableName: table, roundNum: round, players: names })
             });
-            fetchInitialData(() => { initView(); btn.disabled = false; alert("メンバー確定しました"); });
-        } catch (err) { alert("確定エラー: " + err); btn.disabled = false; }
+            alert("メンバー確定しました");
+            fetchInitialData(() => { initView(); btn.disabled = false; });
+        } catch (err) {
+            alert("確定エラー: " + err);
+            btn.disabled = false;
+        }
     }
 
     async function submitScores() {
@@ -196,70 +230,53 @@
         let total = 0;
 
         if (!gData.tableStatus || !gData.tableStatus[table]) {
-            alert("データ同期エラー。再読み込みしてください。"); return;
+            alert("同期エラー。再読み込みしてください。");
+            return;
         }
 
         for (let input of inputs) {
             const val = input.value === "" ? NaN : Number(input.value);
-            if (isNaN(val)) { alert("未入力があります"); return; }
+            if (isNaN(val)) { alert("未入力のスコアがあります"); return; }
             players.push({ name: input.dataset.name, rawScore: val });
             total += val;
         }
 
         if (total !== 100000) {
-            const diff = 100000 - total;
-            alert("10万点になりません。\n" + (diff > 0 ? `${diff.toLocaleString()}点 不足` : `${Math.abs(diff).toLocaleString()}点 超過`));
+            alert("合計が10万点になっていません。");
             return;
         }
 
         if (!confirm("スコアを送信しますか？")) return;
+
         btn.disabled = true;
         const date = new Date().toISOString().slice(0,10).replace(/-/g, "");
         const round = gData.tableStatus[table].round;
-        const matchId = date + "-" + String(round).padStart(2, '0') + "-" + table;
+        const matchId = `${date}-${String(round).padStart(2, '0')}-${table}`;
 
         try {
             const response = await fetch(GAS_URL, { 
-                method: "POST", headers: { "Content-Type": "text/plain" },
+                method: "POST", 
+                headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify({ action: "processFromWeb", matchId: matchId, tableName: table + "卓", players: players })
             });
-            alert("送信完了"); resetUI(); fetchInitialData();
-        } catch (err) { alert("送信エラー: " + err); btn.disabled = false; }
+            const resData = await response.json();
+            if (resData.status === "error") throw new Error(resData.error);
+            
+            alert("送信完了しました！");
+            resetUI();
+            fetchInitialData();
+        } catch (err) {
+            alert("送信エラー: " + err);
+            btn.disabled = false;
+        }
+    }
+
+    function resetUI() {
+        document.getElementById('tableSelect').value = "";
+        document.getElementById('roundInfo').textContent = "";
+        document.getElementById('stepMember').style.display = 'none';
+        document.getElementById('stepScore').style.display = 'none';
     }
 </script>
 </body>
-/**
- * データ取得 (GET) - 根本原因特定用デバッグモード
- */
-async function fetchInitialData(callback) {
-    const tableSelect = document.getElementById('tableSelect');
-    tableSelect.disabled = true;
-    console.log("GAS通信開始: URL =", GAS_URL); // デバッグ用
-
-    try {
-        const response = await fetch(GAS_URL);
-        
-        // レスポンスが正常かチェック
-        if (!response.ok) {
-            throw new Error(`HTTPエラー! ステータス: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        // 【エンジニア推奨】GASから実際に何が届いているかを表示
-        console.log("GASからのレスポンス内容:", data);
-
-        if (!data || Object.keys(data).length === 0) {
-            console.error("警告: GASから空のデータが返されました。");
-        }
-
-        gData = data;
-        tableSelect.disabled = false;
-        tableSelect.options[0].text = "卓を選択してください";
-        if(callback) callback();
-    } catch (err) {
-        console.error("fetchInitialDataでエラー発生:", err);
-        alert("通信失敗: GASからのデータ取得に失敗しました。\n詳細: " + err);
-    }
-}
 </html>
