@@ -4,7 +4,7 @@
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>麻雀大会スコア入力 (V12.0 API連携版)</title>
+    <title>麻雀大会スコア入力 (V13.0 最終版)</title>
     <style>
         body { font-family: -apple-system, "Segoe UI", "Helvetica Neue", sans-serif; padding: 15px; background: #f0f2f5; color: #333; line-height: 1.6; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
@@ -51,7 +51,7 @@
 </div>
 
 <script>
-    // 【重要】ここにデプロイした最新のGASウェブアプリURLを貼り付けてください
+    // 【重要】GASの「デプロイ」で発行されたウェブアプリURLをここに貼ってください
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyRmIsWptfSV_GraQOOT-SC8HLIfirXp2C_sFjzDJ9c28HAeDRRceH60cgqmvqwL7W7tw/exec"; 
     
     let gData = {};
@@ -63,25 +63,20 @@
 
     /**
      * データ取得 (GET)
-     * 通信遅延対策として物理ロックとデバッグログを強化
      */
     async function fetchInitialData(callback) {
         const tableSelect = document.getElementById('tableSelect');
         tableSelect.disabled = true;
         tableSelect.options[0].text = "データ取得中...";
         
-        console.log("GAS通信開始...");
-
         try {
             const response = await fetch(GAS_URL);
-            if (!response.ok) throw new Error(`HTTPエラー! ステータス: ${response.status}`);
+            if (!response.ok) throw new Error(`HTTPエラー: ${response.status}`);
             
             const data = await response.json();
             console.log("GASからのレスポンス内容:", data);
 
             gData = data;
-
-            // データの準備が「完全に」整ってから解除
             tableSelect.options[0].text = "卓を選択してください";
             tableSelect.disabled = false;
             
@@ -89,13 +84,12 @@
         } catch (err) {
             console.error("fetchInitialDataエラー:", err);
             tableSelect.options[0].text = "通信エラーが発生しました";
-            alert("GASからのデータ取得に失敗しました。URLの確認と再読み込みを行ってください。\n詳細: " + err);
+            alert("GASからのデータ取得に失敗しました。\n詳細: " + err);
         }
     }
 
     /**
-     * 画面表示の初期化
-     * エンジニア指摘: 通信完了前やデータ不備時のガード節を強化
+     * 表示初期化 (ガード節あり)
      */
     function initView() {
         const tableSelect = document.getElementById('tableSelect');
@@ -104,10 +98,9 @@
         const sMem = document.getElementById('stepMember');
         const sSco = document.getElementById('stepScore');
 
-        // 【ガード節】gDataが未ロード、または通信エラー時は処理を中断
+        // データ未取得時のガード
         if (!table || !gData || !gData.tableStatus) {
-            console.warn("データが準備できていないため、処理を中断しました。");
-            if (table) tableSelect.value = ""; // 選択を強制リセット
+            if (table) tableSelect.value = "";
             sMem.style.display = 'none';
             sSco.style.display = 'none';
             info.textContent = "";
@@ -128,6 +121,7 @@
     function showMemberSelect() {
         document.getElementById('stepMember').style.display = 'block';
         document.getElementById('stepScore').style.display = 'none';
+        document.getElementById('startBtn').disabled = false; // 強制復帰
         const container = document.getElementById('memberSelects');
         container.innerHTML = "";
         SEATS.forEach(seat => {
@@ -154,18 +148,14 @@
                     sel.add(opt);
                 }
             });
-            // 他の風で選択済みの人は無効化して表示
             gData.playerNames.forEach(n => {
                 if (!busyInOtherTables.includes(n) && selectedInCurrentTable.includes(n) && n !== currentVal) {
-                    const opt = new Option(n + " (選択中)", n);
-                    opt.disabled = true; sel.add(opt);
+                    const opt = new Option(n + " (選択中)", n); opt.disabled = true; sel.add(opt);
                 }
             });
-            // 他の卓で対局中の人は無効化して表示
             gData.playerNames.forEach(n => {
                 if (busyInOtherTables.includes(n)) {
-                    const opt = new Option(n + " (対局中)", n);
-                    opt.disabled = true; sel.add(opt);
+                    const opt = new Option(n + " (対局中)", n); opt.disabled = true; sel.add(opt);
                 }
             });
         });
@@ -174,6 +164,9 @@
     function showScoreInput(players) {
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'block';
+        // エンジニア指摘: スコア送信ボタンを確実に有効化
+        document.getElementById('submitBtn').disabled = false;
+
         const container = document.getElementById('scoreInputs');
         container.innerHTML = "";
         players.forEach((name, i) => {
@@ -203,19 +196,19 @@
         const names = Array.from(document.querySelectorAll('.p-name')).map(s => s.value);
         const btn = document.getElementById('startBtn');
         
-        if (!gData.completedRounds) { alert("データ読み込み中です"); return; }
+        if (!gData.completedRounds) return;
         const round = (gData.completedRounds[table] || 0) + 1;
         if (names.includes("") || new Set(names).size !== 4) { alert("4名選んでください"); return; }
         
         btn.disabled = true;
         try {
-            const res = await fetch(GAS_URL, {
+            await fetch(GAS_URL, {
                 method: "POST",
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify({ action: "commitMembers", tableName: table, roundNum: round, players: names })
             });
             alert("メンバー確定しました");
-            fetchInitialData(() => { initView(); btn.disabled = false; });
+            fetchInitialData(() => { initView(); });
         } catch (err) {
             alert("確定エラー: " + err);
             btn.disabled = false;
@@ -276,6 +269,8 @@
         document.getElementById('roundInfo').textContent = "";
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'none';
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('startBtn').disabled = false;
     }
 </script>
 </body>
