@@ -3,9 +3,8 @@
 <head>
     <base target="_top">
     <meta charset="UTF-8">
-    <link rel="icon" type="image/png" href="favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>カテコミュ麻雀大会～みや～ん杯～</title>
+    <title>カテコミュ麻雀大会～みやーん杯～</title>
     <style>
         body { font-family: -apple-system, sans-serif; padding: 10px; background: #f0f2f5; margin: 0; }
         .header-title { text-align: center; padding: 15px 10px; background: #1a73e8; color: white; font-size: 1.1em; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 15px; border-radius: 0 0 10px 10px; }
@@ -22,7 +21,29 @@
         .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; border-color: #1a73e8 !important; }
         .diff-plus { color: #d93025 !important; background: #fce8e6 !important; border-color: #d93025 !important; }
         .diff-ok { color: #2e7d32 !important; background: #e6f4ea !important; border-color: #2e7d32 !important; }
-        .summary-link { display: block; text-align: center; margin-top: 25px; font-size: 1em; color: #1a73e8; text-decoration: none; font-weight: bold; border: 2px solid #1a73e8; padding: 10px; border-radius: 8px; background: white; }
+        
+        /* 外部リンクボタン用エリア */
+        .link-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            max-width: 500px;
+            margin: 25px auto 10px auto;
+        }
+        .external-link { 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 0.9em; 
+            color: #1a73e8; 
+            text-decoration: none; 
+            font-weight: bold; 
+            border: 2px solid #1a73e8; 
+            padding: 12px 5px; 
+            border-radius: 8px; 
+            background: white; 
+        }
     </style>
 </head>
 <body>
@@ -47,7 +68,11 @@
         <div id="scoreInputs" class="score-grid"></div>
     </div>
 </div>
-<a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit#gid=1001959891" target="_blank" class="summary-link">現在のスコア一覧を見る</a>
+
+<div class="link-container">
+    <a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit#gid=1001959891" target="_blank" class="external-link">スコア表を見る</a>
+    <a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit?gid=1215317715#gid=1215317715" target="_blank" class="external-link">ルール確認</a>
+</div>
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyRmIsWptfSV_GraQOOT-SC8HLIfirXp2C_sFjzDJ9c28HAeDRRceH60cgqmvqwL7W7tw/exec"; 
