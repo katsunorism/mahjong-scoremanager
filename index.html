@@ -16,34 +16,14 @@
         select, input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 16px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
         button:disabled { background: #ccc; }
+        .btn-cancel { background: #6c757d; padding: 10px; font-size: 14px; margin-top: 10px; width: 100%; }
         #scoreStatus { background: #e8f0fe; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: center; color: #1a73e8; border: 2px solid #1a73e8; font-weight: bold; font-size: 0.9em; }
         #scoreSub { font-size: 0.8em; display: block; margin-top: 2px; }
         .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; border-color: #1a73e8 !important; }
         .diff-plus { color: #d93025 !important; background: #fce8e6 !important; border-color: #d93025 !important; }
         .diff-ok { color: #2e7d32 !important; background: #e6f4ea !important; border-color: #2e7d32 !important; }
-        
-        /* 外部リンクボタン用エリア */
-        .link-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            max-width: 500px;
-            margin: 25px auto 10px auto;
-        }
-        .external-link { 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            font-size: 0.9em; 
-            color: #1a73e8; 
-            text-decoration: none; 
-            font-weight: bold; 
-            border: 2px solid #1a73e8; 
-            padding: 12px 5px; 
-            border-radius: 8px; 
-            background: white; 
-        }
+        .link-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 500px; margin: 25px auto 10px auto; }
+        .external-link { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.9em; color: #1a73e8; text-decoration: none; font-weight: bold; border: 2px solid #1a73e8; padding: 12px 5px; border-radius: 8px; background: white; }
     </style>
 </head>
 <body>
@@ -64,11 +44,11 @@
             <span id="scoreMain">合計: 0</span>
             <span id="scoreSub"></span>
         </div>
-        <button id="submitBtn" onclick="submitScores()" style="margin-bottom:15px;">スコア送信</button>
+        <button id="submitBtn" onclick="submitScores()">スコア送信</button>
+        <button id="cancelBtn" class="btn-cancel" onclick="cancelSelection()">メンバーを修正する</button>
         <div id="scoreInputs" class="score-grid"></div>
     </div>
 </div>
-
 <div class="link-container">
     <a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit#gid=1001959891" target="_blank" class="external-link">スコア表を見る</a>
     <a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit?gid=1215317715#gid=1215317715" target="_blank" class="external-link">ルール確認</a>
@@ -79,10 +59,10 @@
     let gData = {};
     window.onload = function() { fetchInitialData(); };
     async function fetchInitialData(callback) {
-        const sel = document.getElementById('tableSelect');
         try {
             const res = await fetch(GAS_URL);
             gData = await res.json();
+            const sel = document.getElementById('tableSelect');
             sel.options[0].text = "卓を選択してください";
             sel.disabled = false;
             if(callback) callback();
@@ -90,17 +70,24 @@
     }
     function initView() {
         const table = document.getElementById('tableSelect').value;
-        const sMem = document.getElementById('stepMember');
-        const sSco = document.getElementById('stepScore');
-        if (!table || !gData.tableStatus) { sMem.style.display='none'; sSco.style.display='none'; return; }
+        if (!table || !gData.tableStatus) return;
         const status = gData.tableStatus[table];
-        if (status && status.players[0]) { showScoreInput(status.players); } 
+        if (status && status.players.length === 4) { showScoreInput(status.players); } 
         else { showMemberSelect(); }
+    }
+    async function cancelSelection() {
+        if (!confirm("メンバー選定をやり直しますか？")) return;
+        const table = document.getElementById('tableSelect').value;
+        const btn = document.getElementById('cancelBtn');
+        btn.disabled = true;
+        try {
+            await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "cancelMatch", tableName: table }) });
+            fetchInitialData(() => initView());
+        } catch (e) { alert("エラー"); btn.disabled = false; }
     }
     function showMemberSelect() {
         document.getElementById('stepMember').style.display = 'block';
         document.getElementById('stepScore').style.display = 'none';
-        document.getElementById('startBtn').disabled = false;
         const container = document.getElementById('memberSelects');
         container.innerHTML = "";
         const SEATS = ["東", "南", "西", "北"];
@@ -119,8 +106,10 @@
         selects.forEach(sel => {
             const cur = sel.value; sel.innerHTML = '<option value="">選択</option>';
             gData.playerNames.forEach(n => {
-                if (!busy.includes(n) && (!selected.includes(n) || n === cur)) {
-                    const opt = new Option(n, n); if (n === cur) opt.selected = true; sel.add(opt);
+                if (!busy.includes(n) || n === cur) {
+                    if (!selected.includes(n) || n === cur) {
+                        const opt = new Option(n, n); if (n === cur) opt.selected = true; sel.add(opt);
+                    }
                 }
             });
         });
@@ -128,23 +117,11 @@
     function showScoreInput(players) {
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'block';
-        document.getElementById('submitBtn').disabled = false;
         const container = document.getElementById('scoreInputs');
         container.innerHTML = ""; 
-        players.forEach((name, i) => {
-            const div = document.createElement('div');
-            div.className = "player-box";
-            const label = document.createElement('span');
-            label.className = "player-label";
-            label.textContent = name;
-            const input = document.createElement('input');
-            input.type = "number";
-            input.className = "p-score";
-            input.setAttribute('data-name', name);
-            input.setAttribute('inputmode', 'numeric');
-            input.placeholder = "0";
-            input.oninput = calcTotal;
-            div.appendChild(label); div.appendChild(input);
+        players.forEach(name => {
+            const div = document.createElement('div'); div.className = "player-box";
+            div.innerHTML = `<span class="player-label">${name}</span><input type="number" class="p-score" data-name="${name}" inputmode="numeric" placeholder="0" oninput="calcTotal()">`;
             container.appendChild(div);
         });
         calcTotal();
@@ -168,10 +145,9 @@
         try {
             await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "commitMembers", tableName: table, roundNum: (gData.completedRounds[table] || 0) + 1, players: names }) });
             fetchInitialData(() => initView());
-        } catch (e) { alert("確定エラー"); btn.disabled = false; }
+        } catch (e) { alert("エラー"); btn.disabled = false; }
     }
     async function submitScores() {
-        const btn = document.getElementById('submitBtn');
         const table = document.getElementById('tableSelect').value;
         const inputs = document.querySelectorAll('.p-score');
         const players = []; let total = 0;
@@ -183,20 +159,16 @@
         }
         if (total !== 100000) return alert("100,000点にしてください");
         if (!confirm("送信しますか？")) return;
-        btn.disabled = true;
+        const btn = document.getElementById('submitBtn'); btn.disabled = true;
         const date = new Date().toISOString().slice(0,10).replace(/-/g, "");
         const matchId = `${date}-${String(gData.tableStatus[table].round).padStart(2, '0')}-${table}`;
         try {
             await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "processFromWeb", matchId: matchId, tableName: table + "卓", players: players }) });
-            alert("送信完了！"); resetUI(); fetchInitialData();
-        } catch (e) { alert("送信エラー"); btn.disabled = false; }
-    }
-    function resetUI() {
-        document.getElementById('tableSelect').value = "";
-        document.getElementById('stepMember').style.display = 'none';
-        document.getElementById('stepScore').style.display = 'none';
-        document.getElementById('submitBtn').disabled = false;
-        document.getElementById('startBtn').disabled = false;
+            alert("送信完了！");
+            document.getElementById('tableSelect').value = "";
+            document.getElementById('stepScore').style.display = 'none';
+            fetchInitialData();
+        } catch (e) { alert("エラー"); btn.disabled = false; }
     }
 </script>
 </body>
