@@ -21,8 +21,7 @@
         .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; border-color: #1a73e8 !important; }
         .diff-plus { color: #d93025 !important; background: #fce8e6 !important; border-color: #d93025 !important; }
         .diff-ok { color: #2e7d32 !important; background: #e6f4ea !important; border-color: #2e7d32 !important; }
-        /* リンク用スタイル */
-        .summary-link { display: block; text-align: center; margin-top: 20px; font-size: 0.9em; color: #1a73e8; text-decoration: none; font-weight: bold; }
+        .summary-link { display: block; text-align: center; margin-top: 25px; font-size: 1em; color: #1a73e8; text-decoration: none; font-weight: bold; border: 2px solid #1a73e8; padding: 10px; border-radius: 8px; background: white; }
     </style>
 </head>
 <body>
@@ -79,7 +78,6 @@
         
         const status = gData.tableStatus[table];
         if (status && status.players[0]) {
-            // 「対局中」のテキスト表示を削除
             showScoreInput(status.players);
         } else {
             showMemberSelect();
