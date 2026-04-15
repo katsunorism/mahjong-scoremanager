@@ -4,7 +4,7 @@
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>麻雀大会スコア入力 (V13.0 最終版)</title>
+    <title>麻雀大会スコア入力 (V15.0 最終安定版)</title>
     <style>
         body { font-family: -apple-system, "Segoe UI", "Helvetica Neue", sans-serif; padding: 15px; background: #f0f2f5; color: #333; line-height: 1.6; }
         .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; max-width: 500px; margin-left: auto; margin-right: auto; }
@@ -17,11 +17,21 @@
         button:hover { opacity: 0.9; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         #roundInfo { font-weight: bold; color: #1a73e8; margin-bottom: 15px; font-size: 1.1em; min-height: 1.5em; }
-        #scoreStatus { background: #e8f0fe; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; text-align: left; color: #1a73e8; font-size: 0.95em; border-left: 5px solid #1a73e8; }
-        .diff-plus { color: #d93025 !important; background: #fce8e6 !important; border-left-color: #d93025 !important; }
-        .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; border-left-color: #1a73e8 !important; }
-        .diff-ok { color: #2e7d32 !important; background: #e6f4ea !important; border-left-color: #2e7d32 !important; }
-        .error-msg { color: #d93025; font-weight: bold; text-align: center; margin-top: 10px; font-size: 14px; }
+
+        /* スコアステータスの上部固定 (Sticky Overlay) */
+        #scoreStatus { 
+            position: sticky; top: 10px; z-index: 1000; 
+            background: #e8f0fe; padding: 12px; border-radius: 12px; 
+            margin-bottom: 20px; text-align: center; color: #1a73e8; 
+            border: 2px solid #1a73e8; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: bold;
+        }
+        #scoreSub { font-size: 0.8em; display: block; margin-top: 4px; }
+        
+        .diff-plus { color: #d93025 !important; background: #fce8e6 !important; border-color: #d93025 !important; }
+        .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; border-color: #1a73e8 !important; }
+        .diff-ok { color: #2e7d32 !important; background: #e6f4ea !important; border-color: #2e7d32 !important; }
+        
+        @media (max-width: 600px) { #scoreStatus { top: 5px; padding: 8px; font-size: 0.95em; } }
     </style>
 </head>
 <body>
@@ -43,72 +53,48 @@
 
     <div id="stepScore" style="display:none;">
         <h3>スコア入力</h3>
-        <div id="scoreStatus">合計: 0 / 100,000 (不足: 100,000)</div>
+        <div id="scoreStatus">
+            <span id="scoreMain">合計: 0 / 100,000</span>
+            <span id="scoreSub">(あと 100,000 点不足)</span>
+        </div>
         <div id="scoreInputs"></div>
-        <div id="status" class="error-msg"></div>
         <button id="submitBtn" onclick="submitScores()">スコア送信</button>
     </div>
 </div>
 
 <script>
-    // 【重要】GASの「デプロイ」で発行されたウェブアプリURLをここに貼ってください
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyRmIsWptfSV_GraQOOT-SC8HLIfirXp2C_sFjzDJ9c28HAeDRRceH60cgqmvqwL7W7tw/exec"; 
-    
+    const GAS_URL = "ここにデプロイURLを貼る"; 
     let gData = {};
     const SEATS = ["東", "南", "西", "北"];
 
-    window.onload = function() {
-        fetchInitialData();
-    };
+    window.onload = function() { fetchInitialData(); };
 
-    /**
-     * データ取得 (GET)
-     */
     async function fetchInitialData(callback) {
         const tableSelect = document.getElementById('tableSelect');
         tableSelect.disabled = true;
         tableSelect.options[0].text = "データ取得中...";
-        
         try {
             const response = await fetch(GAS_URL);
-            if (!response.ok) throw new Error(`HTTPエラー: ${response.status}`);
-            
-            const data = await response.json();
-            console.log("GASからのレスポンス内容:", data);
-
-            gData = data;
+            gData = await response.json();
             tableSelect.options[0].text = "卓を選択してください";
             tableSelect.disabled = false;
-            
             if(callback) callback();
         } catch (err) {
-            console.error("fetchInitialDataエラー:", err);
-            tableSelect.options[0].text = "通信エラーが発生しました";
-            alert("GASからのデータ取得に失敗しました。\n詳細: " + err);
+            tableSelect.options[0].text = "通信エラー";
+            alert("データ取得失敗: " + err);
         }
     }
 
-    /**
-     * 表示初期化 (ガード節あり)
-     */
     function initView() {
-        const tableSelect = document.getElementById('tableSelect');
-        const table = tableSelect.value;
+        const table = document.getElementById('tableSelect').value;
         const info = document.getElementById('roundInfo');
         const sMem = document.getElementById('stepMember');
         const sSco = document.getElementById('stepScore');
-
-        // データ未取得時のガード
         if (!table || !gData || !gData.tableStatus) {
-            if (table) tableSelect.value = "";
-            sMem.style.display = 'none';
-            sSco.style.display = 'none';
-            info.textContent = "";
-            return;
+            sMem.style.display = 'none'; sSco.style.display = 'none'; info.textContent = ""; return;
         }
-
         const tableStatus = gData.tableStatus[table];
-        if (tableStatus && tableStatus.players[0] && tableStatus.players[0] !== "") {
+        if (tableStatus && tableStatus.players[0] !== "") {
             info.textContent = "第" + tableStatus.round + "回戦 対局中";
             showScoreInput(tableStatus.players);
         } else {
@@ -121,13 +107,13 @@
     function showMemberSelect() {
         document.getElementById('stepMember').style.display = 'block';
         document.getElementById('stepScore').style.display = 'none';
-        document.getElementById('startBtn').disabled = false; // 強制復帰
+        document.getElementById('startBtn').disabled = false;
         const container = document.getElementById('memberSelects');
         container.innerHTML = "";
         SEATS.forEach(seat => {
             const div = document.createElement('div');
             div.className = "player-box";
-            div.innerHTML = `<label>${seat}家</label><select class="p-name" onchange="syncSelects()"><option value="">選択してください</option></select>`;
+            div.innerHTML = `<label>${seat}家</label><select class="p-name" onchange="syncSelects()"><option value="">選択</option></select>`;
             container.appendChild(div);
         });
         syncSelects();
@@ -135,27 +121,13 @@
 
     function syncSelects() {
         const selects = document.querySelectorAll('.p-name');
-        const busyInOtherTables = gData.busyPlayers || [];
-        const selectedInCurrentTable = Array.from(selects).map(s => s.value).filter(v => v !== "");
-        
+        const busy = gData.busyPlayers || [];
+        const selected = Array.from(selects).map(s => s.value).filter(v => v !== "");
         selects.forEach(sel => {
-            const currentVal = sel.value;
-            sel.innerHTML = '<option value="">選択してください</option>';
+            const cur = sel.value; sel.innerHTML = '<option value="">選択</option>';
             gData.playerNames.forEach(n => {
-                if (!busyInOtherTables.includes(n) && (!selectedInCurrentTable.includes(n) || n === currentVal)) {
-                    const opt = new Option(n, n);
-                    if (n === currentVal) opt.selected = true;
-                    sel.add(opt);
-                }
-            });
-            gData.playerNames.forEach(n => {
-                if (!busyInOtherTables.includes(n) && selectedInCurrentTable.includes(n) && n !== currentVal) {
-                    const opt = new Option(n + " (選択中)", n); opt.disabled = true; sel.add(opt);
-                }
-            });
-            gData.playerNames.forEach(n => {
-                if (busyInOtherTables.includes(n)) {
-                    const opt = new Option(n + " (対局中)", n); opt.disabled = true; sel.add(opt);
+                if (!busy.includes(n) && (!selected.includes(n) || n === cur)) {
+                    const opt = new Option(n, n); if (n === cur) opt.selected = true; sel.add(opt);
                 }
             });
         });
@@ -164,15 +136,13 @@
     function showScoreInput(players) {
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'block';
-        // エンジニア指摘: スコア送信ボタンを確実に有効化
         document.getElementById('submitBtn').disabled = false;
-
         const container = document.getElementById('scoreInputs');
         container.innerHTML = "";
         players.forEach((name, i) => {
             const div = document.createElement('div');
             div.className = "player-box";
-            div.innerHTML = `<label>${SEATS[i]}家: <b>${name}</b></label><input type="number" class="p-score" data-name="${name}" placeholder="点数を入力" inputmode="numeric" oninput="calcTotal()">`;
+            div.innerHTML = `<label>${SEATS[i]}: <b>${name}</b></label><input type="number" class="p-score" data-name="${name}" inputmode="numeric" oninput="calcTotal()">`;
             container.appendChild(div);
         });
         calcTotal();
@@ -182,35 +152,43 @@
         const inputs = document.querySelectorAll('.p-score');
         let total = 0;
         inputs.forEach(i => total += (i.value === "" ? 0 : Number(i.value)));
+        
         const diff = 100000 - total;
         const statusBox = document.getElementById('scoreStatus');
-        let text = `合計: ${total.toLocaleString()} / 100,000`;
-        if (diff > 0) { text += ` (不足: ${diff.toLocaleString()})`; statusBox.className = "diff-minus"; }
-        else if (diff < 0) { text += ` (超過: ${Math.abs(diff).toLocaleString()})`; statusBox.className = "diff-plus"; }
-        else { text += " (OK!)"; statusBox.className = "diff-ok"; }
-        statusBox.textContent = text;
+        const main = document.getElementById('scoreMain');
+        const sub = document.getElementById('scoreSub');
+        
+        main.textContent = `合計: ${total.toLocaleString()} / 100,000`;
+        if (diff > 0) {
+            sub.textContent = `(あと ${diff.toLocaleString()} 点不足)`;
+            statusBox.className = "diff-minus";
+        } else if (diff < 0) {
+            sub.textContent = `(${Math.abs(diff).toLocaleString()} 点超過)`;
+            statusBox.className = "diff-plus";
+        } else {
+            main.textContent = `合計: 100,000 (OK!)`;
+            sub.textContent = "";
+            statusBox.className = "diff-ok";
+        }
     }
 
     async function startMatch() {
         const table = document.getElementById('tableSelect').value;
         const names = Array.from(document.querySelectorAll('.p-name')).map(s => s.value);
+        if (names.includes("")) return alert("4名選んでください");
+        
         const btn = document.getElementById('startBtn');
-        
-        if (!gData.completedRounds) return;
-        const round = (gData.completedRounds[table] || 0) + 1;
-        if (names.includes("") || new Set(names).size !== 4) { alert("4名選んでください"); return; }
-        
         btn.disabled = true;
+
         try {
             await fetch(GAS_URL, {
                 method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: JSON.stringify({ action: "commitMembers", tableName: table, roundNum: round, players: names })
+                headers: { "Content-Type": "text/plain" }, // ①復旧
+                body: JSON.stringify({ action: "commitMembers", tableName: table, roundNum: (gData.completedRounds[table] || 0) + 1, players: names })
             });
-            alert("メンバー確定しました");
-            fetchInitialData(() => { initView(); });
-        } catch (err) {
-            alert("確定エラー: " + err);
+            fetchInitialData(() => initView());
+        } catch (e) { 
+            alert("エラー: " + e); 
             btn.disabled = false;
         }
     }
@@ -219,56 +197,40 @@
         const btn = document.getElementById('submitBtn');
         const table = document.getElementById('tableSelect').value;
         const inputs = document.querySelectorAll('.p-score');
-        const players = [];
-        let total = 0;
-
-        if (!gData.tableStatus || !gData.tableStatus[table]) {
-            alert("同期エラー。再読み込みしてください。");
-            return;
-        }
+        const players = []; let total = 0;
 
         for (let input of inputs) {
+            // ③復旧：空欄をNaNにする
             const val = input.value === "" ? NaN : Number(input.value);
-            if (isNaN(val)) { alert("未入力のスコアがあります"); return; }
+            if (isNaN(val)) return alert("未入力があります");
             players.push({ name: input.dataset.name, rawScore: val });
             total += val;
         }
-
-        if (total !== 100000) {
-            alert("合計が10万点になっていません。");
-            return;
-        }
-
-        if (!confirm("スコアを送信しますか？")) return;
+        if (total !== 100000) return alert("10万点にしてください");
+        if (!confirm("送信しますか？")) return;
 
         btn.disabled = true;
         const date = new Date().toISOString().slice(0,10).replace(/-/g, "");
-        const round = gData.tableStatus[table].round;
-        const matchId = `${date}-${String(round).padStart(2, '0')}-${table}`;
+        const matchId = `${date}-${String(gData.tableStatus[table].round).padStart(2, '0')}-${table}`;
 
         try {
-            const response = await fetch(GAS_URL, { 
-                method: "POST", 
-                headers: { "Content-Type": "text/plain" },
+            await fetch(GAS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" }, // ②復旧
                 body: JSON.stringify({ action: "processFromWeb", matchId: matchId, tableName: table + "卓", players: players })
             });
-            const resData = await response.json();
-            if (resData.status === "error") throw new Error(resData.error);
-            
-            alert("送信完了しました！");
-            resetUI();
-            fetchInitialData();
-        } catch (err) {
-            alert("送信エラー: " + err);
-            btn.disabled = false;
+            alert("送信完了！"); resetUI(); fetchInitialData();
+        } catch (e) { 
+            alert("エラー: " + e); 
+            btn.disabled = false; 
         }
     }
 
     function resetUI() {
         document.getElementById('tableSelect').value = "";
-        document.getElementById('roundInfo').textContent = "";
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'none';
+        // ④復旧：ボタンの活性化
         document.getElementById('submitBtn').disabled = false;
         document.getElementById('startBtn').disabled = false;
     }
