@@ -4,12 +4,33 @@
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>麻雀大会スコア入力 (V20.0 最終版)</title>
+    <title>カテコミュ麻雀大会～みや～ん杯～</title>
     <style>
         body { font-family: -apple-system, sans-serif; padding: 10px; background: #f0f2f5; margin: 0; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
         
-        /* 2カラム・グリッドレイアウト */
+        /* ヘッダーデザイン */
+        .header-title {
+            text-align: center;
+            padding: 15px 10px;
+            background: #1a73e8;
+            color: white;
+            font-size: 1.1em;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            border-radius: 0 0 10px 10px;
+        }
+
+        .card { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            max-width: 500px; 
+            margin: auto;
+        }
+        
+        /* 2カラム・グリッドレイアウト（モバイル入力最適化） */
         .score-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -27,7 +48,7 @@
         
         .player-label {
             display: block;
-            font-size: 0.9em; /* 少し大きくして視認性アップ */
+            font-size: 0.9em; 
             line-height: 1.4;
             margin-bottom: 5px;
             height: 1.5em; 
@@ -37,12 +58,13 @@
             white-space: nowrap;      
         }
 
-        h2 { margin-top: 0; color: #1a73e8; font-size: 1.2em; text-align: center; }
-        h3 { font-size: 1em; color: #555; margin-bottom: 12px; border-left: 4px solid #1a73e8; padding-left: 8px; }
-        select, input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        h3 { font-size: 1em; color: #555; margin-bottom: 12px; border-left: 4px solid #1a73e8; padding-left: 8px; margin-top: 0; }
+        select, input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         
-        button { width: 100%; padding: 14px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button { width: 100%; padding: 16px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
         button:disabled { background: #ccc; }
+
+        #roundInfo { text-align:center; font-weight:bold; color:#1a73e8; margin-bottom:15px; min-height:1.2em; font-size: 1.1em; }
 
         #scoreStatus { 
             background: #e8f0fe; padding: 10px; border-radius: 10px; 
@@ -58,13 +80,17 @@
 </head>
 <body>
 
+<div class="header-title">
+    カテコミュ麻雀大会～みや～ん杯～
+</div>
+
 <div class="card">
-    <select id="tableSelect" onchange="initView()" disabled style="margin-bottom:10px;">
+    <select id="tableSelect" onchange="initView()" disabled style="margin-bottom:15px;">
         <option value="">データ取得中...</option>
         <option value="A">A卓</option>
         <option value="B">B卓</option>
     </select>
-    <div id="roundInfo" style="text-align:center; font-weight:bold; color:#1a73e8; margin-bottom:10px; min-height:1.2em;"></div>
+    <div id="roundInfo"></div>
 
     <div id="stepMember" style="display:none;">
         <h3>メンバー選定</h3>
@@ -77,12 +103,13 @@
             <span id="scoreMain">合計: 0</span>
             <span id="scoreSub"></span>
         </div>
-        <button id="submitBtn" onclick="submitScores()" style="margin-bottom:10px;">スコア送信</button>
+        <button id="submitBtn" onclick="submitScores()" style="margin-bottom:15px;">スコア送信</button>
         <div id="scoreInputs" class="score-grid"></div>
     </div>
 </div>
 
 <script>
+    // 指定されたデプロイURLを直接設定
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyRmIsWptfSV_GraQOOT-SC8HLIfirXp2C_sFjzDJ9c28HAeDRRceH60cgqmvqwL7W7tw/exec"; 
     let gData = {};
 
@@ -96,7 +123,7 @@
             sel.options[0].text = "卓を選択してください";
             sel.disabled = false;
             if(callback) callback();
-        } catch (e) { alert("通信エラー"); }
+        } catch (e) { alert("通信エラーが発生しました"); }
     }
 
     function initView() {
@@ -147,9 +174,6 @@
         });
     }
 
-    /**
-     * 【修正】名前の前の座順表示を削除
-     */
     function showScoreInput(players) {
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'block';
@@ -163,7 +187,7 @@
 
             const label = document.createElement('span');
             label.className = "player-label";
-            label.textContent = name; // 「東：」などを削除し、名前のみを表示
+            label.textContent = name;
             
             const input = document.createElement('input');
             input.type = "number";
@@ -216,7 +240,7 @@
                 body: JSON.stringify({ action: "commitMembers", tableName: table, roundNum: (gData.completedRounds[table] || 0) + 1, players: names })
             });
             fetchInitialData(() => initView());
-        } catch (e) { alert("エラー"); btn.disabled = false; }
+        } catch (e) { alert("確定エラーが発生しました"); btn.disabled = false; }
     }
 
     async function submitScores() {
@@ -226,12 +250,12 @@
         const players = []; let total = 0;
         for (let input of inputs) {
             const val = input.value === "" ? NaN : Number(input.value);
-            if (isNaN(val)) return alert("未入力があります");
+            if (isNaN(val)) return alert("スコアが未入力です");
             players.push({ name: input.getAttribute('data-name'), rawScore: val });
             total += val;
         }
-        if (total !== 100000) return alert("10万点ちょうどにしてください");
-        if (!confirm("送信しますか？")) return;
+        if (total !== 100000) return alert("合計を100,000点ちょうどにしてください");
+        if (!confirm("スコアを送信しますか？")) return;
         btn.disabled = true;
         const date = new Date().toISOString().slice(0,10).replace(/-/g, "");
         const matchId = `${date}-${String(gData.tableStatus[table].round).padStart(2, '0')}-${table}`;
@@ -241,8 +265,8 @@
                 headers: { "Content-Type": "text/plain" },
                 body: JSON.stringify({ action: "processFromWeb", matchId: matchId, tableName: table + "卓", players: players })
             });
-            alert("送信完了！"); resetUI(); fetchInitialData();
-        } catch (e) { alert("エラー"); btn.disabled = false; }
+            alert("送信が完了しました！"); resetUI(); fetchInitialData();
+        } catch (e) { alert("送信エラーが発生しました"); btn.disabled = false; }
     }
 
     function resetUI() {
