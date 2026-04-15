@@ -228,4 +228,38 @@
     }
 </script>
 </body>
+/**
+ * データ取得 (GET) - 根本原因特定用デバッグモード
+ */
+async function fetchInitialData(callback) {
+    const tableSelect = document.getElementById('tableSelect');
+    tableSelect.disabled = true;
+    console.log("GAS通信開始: URL =", GAS_URL); // デバッグ用
+
+    try {
+        const response = await fetch(GAS_URL);
+        
+        // レスポンスが正常かチェック
+        if (!response.ok) {
+            throw new Error(`HTTPエラー! ステータス: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // 【エンジニア推奨】GASから実際に何が届いているかを表示
+        console.log("GASからのレスポンス内容:", data);
+
+        if (!data || Object.keys(data).length === 0) {
+            console.error("警告: GASから空のデータが返されました。");
+        }
+
+        gData = data;
+        tableSelect.disabled = false;
+        tableSelect.options[0].text = "卓を選択してください";
+        if(callback) callback();
+    } catch (err) {
+        console.error("fetchInitialDataでエラー発生:", err);
+        alert("通信失敗: GASからのデータ取得に失敗しました。\n詳細: " + err);
+    }
+}
 </html>
