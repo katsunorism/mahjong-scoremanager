@@ -3,6 +3,7 @@
 <head>
     <base target="_top">
     <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="favicon.png">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>カテコミュ麻雀大会～みや～ん杯～</title>
     <style>
@@ -25,22 +26,18 @@
     </style>
 </head>
 <body>
-
 <div class="header-title">カテコミュ麻雀大会～みや～ん杯～</div>
-
 <div class="card">
     <select id="tableSelect" onchange="initView()" disabled style="margin-bottom:15px;">
         <option value="">データ取得中...</option>
         <option value="A">A卓</option>
         <option value="B">B卓</option>
     </select>
-
     <div id="stepMember" style="display:none;">
         <h3>メンバー選定</h3>
         <div id="memberSelects" style="margin-bottom:10px;"></div>
         <button id="startBtn" onclick="startMatch()">対局開始</button>
     </div>
-
     <div id="stepScore" style="display:none;">
         <div id="scoreStatus">
             <span id="scoreMain">合計: 0</span>
@@ -50,15 +47,12 @@
         <div id="scoreInputs" class="score-grid"></div>
     </div>
 </div>
-
 <a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit#gid=1001959891" target="_blank" class="summary-link">現在のスコア一覧を見る</a>
 
 <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyRmIsWptfSV_GraQOOT-SC8HLIfirXp2C_sFjzDJ9c28HAeDRRceH60cgqmvqwL7W7tw/exec"; 
     let gData = {};
-
     window.onload = function() { fetchInitialData(); };
-
     async function fetchInitialData(callback) {
         const sel = document.getElementById('tableSelect');
         try {
@@ -69,21 +63,15 @@
             if(callback) callback();
         } catch (e) { alert("通信エラー"); }
     }
-
     function initView() {
         const table = document.getElementById('tableSelect').value;
         const sMem = document.getElementById('stepMember');
         const sSco = document.getElementById('stepScore');
         if (!table || !gData.tableStatus) { sMem.style.display='none'; sSco.style.display='none'; return; }
-        
         const status = gData.tableStatus[table];
-        if (status && status.players[0]) {
-            showScoreInput(status.players);
-        } else {
-            showMemberSelect();
-        }
+        if (status && status.players[0]) { showScoreInput(status.players); } 
+        else { showMemberSelect(); }
     }
-
     function showMemberSelect() {
         document.getElementById('stepMember').style.display = 'block';
         document.getElementById('stepScore').style.display = 'none';
@@ -99,14 +87,12 @@
         });
         syncSelects();
     }
-
     function syncSelects() {
         const selects = document.querySelectorAll('.p-name');
         const busy = gData.busyPlayers || [];
         const selected = Array.from(selects).map(s => s.value).filter(v => v !== "");
         selects.forEach(sel => {
-            const cur = sel.value;
-            sel.innerHTML = '<option value="">選択</option>';
+            const cur = sel.value; sel.innerHTML = '<option value="">選択</option>';
             gData.playerNames.forEach(n => {
                 if (!busy.includes(n) && (!selected.includes(n) || n === cur)) {
                     const opt = new Option(n, n); if (n === cur) opt.selected = true; sel.add(opt);
@@ -114,7 +100,6 @@
             });
         });
     }
-
     function showScoreInput(players) {
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'block';
@@ -134,39 +119,32 @@
             input.setAttribute('inputmode', 'numeric');
             input.placeholder = "0";
             input.oninput = calcTotal;
-            div.appendChild(label);
-            div.appendChild(input);
+            div.appendChild(label); div.appendChild(input);
             container.appendChild(div);
         });
         calcTotal();
     }
-
     function calcTotal() {
         const inputs = document.querySelectorAll('.p-score');
         let total = 0;
         inputs.forEach(i => total += (i.value === "" ? 0 : Number(i.value)));
         const diff = 100000 - total;
-        const main = document.getElementById('scoreMain');
-        const sub = document.getElementById('scoreSub');
-        const statusBox = document.getElementById('scoreStatus');
+        const main = document.getElementById('scoreMain'), sub = document.getElementById('scoreSub'), statusBox = document.getElementById('scoreStatus');
         main.textContent = `合計: ${total.toLocaleString()}`;
         if (diff > 0) { sub.textContent = `(不足: ${diff.toLocaleString()})`; statusBox.className = "diff-minus"; }
         else if (diff < 0) { sub.textContent = `(超過: ${Math.abs(diff).toLocaleString()})`; statusBox.className = "diff-plus"; }
         else { main.textContent = `合計: 100,000 (OK!)`; sub.textContent = ""; statusBox.className = "diff-ok"; }
     }
-
     async function startMatch() {
         const table = document.getElementById('tableSelect').value;
         const names = Array.from(document.querySelectorAll('.p-name')).map(s => s.value);
         if (names.includes("")) return alert("4名選んでください");
-        const btn = document.getElementById('startBtn');
-        btn.disabled = true;
+        const btn = document.getElementById('startBtn'); btn.disabled = true;
         try {
             await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "commitMembers", tableName: table, roundNum: (gData.completedRounds[table] || 0) + 1, players: names }) });
             fetchInitialData(() => initView());
         } catch (e) { alert("確定エラー"); btn.disabled = false; }
     }
-
     async function submitScores() {
         const btn = document.getElementById('submitBtn');
         const table = document.getElementById('tableSelect').value;
@@ -188,7 +166,6 @@
             alert("送信完了！"); resetUI(); fetchInitialData();
         } catch (e) { alert("送信エラー"); btn.disabled = false; }
     }
-
     function resetUI() {
         document.getElementById('tableSelect').value = "";
         document.getElementById('stepMember').style.display = 'none';
