@@ -4,7 +4,7 @@
     <base target="_top">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>麻雀大会スコア入力 (V18.0 2カラム・セキュア版)</title>
+    <title>麻雀大会スコア入力 (V19.0 2カラム・1行表示版)</title>
     <style>
         body { font-family: -apple-system, sans-serif; padding: 10px; background: #f0f2f5; margin: 0; }
         .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
@@ -27,14 +27,14 @@
         
         .player-label {
             display: block;
-            font-size: 0.82em;
-            line-height: 1.2;
+            font-size: 0.85em;
+            line-height: 1.4;
             margin-bottom: 5px;
-            height: 2.6em; /* 2行分確保 */
+            height: 1.5em; /* 1行分に変更 */
             font-weight: bold;
-            /* エンジニア指摘：innerHTMLを使わず改行を表現 */
-            white-space: pre-line;
             overflow: hidden;
+            text-overflow: ellipsis; /* 長い名前は「...」で省略 */
+            white-space: nowrap;      /* 改行を禁止 */
         }
 
         h2 { margin-top: 0; color: #1a73e8; font-size: 1.2em; text-align: center; }
@@ -51,7 +51,6 @@
         }
         #scoreSub { font-size: 0.8em; display: block; margin-top: 2px; }
         
-        /* エンジニア指摘：不足していた minus スタイルを追加 */
         .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; border-color: #1a73e8 !important; }
         .diff-plus { color: #d93025 !important; background: #fce8e6 !important; border-color: #d93025 !important; }
         .diff-ok { color: #2e7d32 !important; background: #e6f4ea !important; border-color: #2e7d32 !important; }
@@ -84,7 +83,7 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyRmIsWptfSV_GraQOOT-SC8HLIfirXp2C_sFjzDJ9c28HAeDRRceH60cgqmvqwL7W7tw/exec"; 
+    const GAS_URL = "ここにデプロイURLを貼る"; 
     let gData = {};
     const SEATS = ["東", "南", "西", "北"];
 
@@ -153,19 +152,16 @@
         document.getElementById('stepScore').style.display = 'block';
         document.getElementById('submitBtn').disabled = false;
         const container = document.getElementById('scoreInputs');
-        container.innerHTML = ""; // コンテナ自体のクリアは許可
+        container.innerHTML = ""; 
         
         players.forEach((name, i) => {
-            const nameParts = name.split(/\s+/);
-            const displayName = nameParts.length > 1 ? `${nameParts[0]}\n${nameParts[1]}` : name;
-            
             const div = document.createElement('div');
             div.className = "player-box";
 
-            // エンジニア指摘：textContent と white-space: pre-line で安全に改行
+            // 名前を1行で表示するラベル
             const label = document.createElement('span');
             label.className = "player-label";
-            label.textContent = `${SEATS[i]}: ${displayName}`;
+            label.textContent = `${SEATS[i]}: ${name}`;
             
             const input = document.createElement('input');
             input.type = "number";
