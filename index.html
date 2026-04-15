@@ -16,7 +16,7 @@
         select, input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 16px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
         button:disabled { background: #ccc; }
-        .btn-cancel { background: #6c757d; padding: 10px; font-size: 14px; margin-top: 10px; width: 100%; }
+        .btn-cancel { background: #6c757d; padding: 10px; font-size: 14px; margin-top: 10px; width: 100%; color: white; border: none; border-radius: 8px; cursor: pointer; }
         #scoreStatus { background: #e8f0fe; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: center; color: #1a73e8; border: 2px solid #1a73e8; font-weight: bold; font-size: 0.9em; }
         #scoreSub { font-size: 0.8em; display: block; margin-top: 2px; }
         .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; border-color: #1a73e8 !important; }
@@ -55,7 +55,8 @@
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyRmIsWptfSV_GraQOOT-SC8HLIfirXp2C_sFjzDJ9c28HAeDRRceH60cgqmvqwL7W7tw/exec"; 
+    // 【更新】新デプロイURLを設定
+    const GAS_URL = "https://script.google.com/macros/s/AKfycby70UbRYGxpboOs58NIAFuGXZvzsL1N3oiU4p7VOLC2Ica_NUu8udrTze1Gdxuo7ud9iw/exec"; 
     let gData = {};
     window.onload = function() { fetchInitialData(); };
     async function fetchInitialData(callback) {
@@ -66,13 +67,13 @@
             sel.options[0].text = "卓を選択してください";
             sel.disabled = false;
             if(callback) callback();
-        } catch (e) { alert("通信エラー"); }
+        } catch (e) { alert("通信エラー：デプロイ設定を確認してください"); }
     }
     function initView() {
         const table = document.getElementById('tableSelect').value;
         if (!table || !gData.tableStatus) return;
         const status = gData.tableStatus[table];
-        if (status && status.players.length === 4) { showScoreInput(status.players); } 
+        if (status && status.players && status.players.length === 4) { showScoreInput(status.players); } 
         else { showMemberSelect(); }
     }
     async function cancelSelection() {
@@ -83,7 +84,7 @@
         try {
             await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "cancelMatch", tableName: table }) });
             fetchInitialData(() => initView());
-        } catch (e) { alert("エラー"); btn.disabled = false; }
+        } catch (e) { alert("エラーが発生しました"); btn.disabled = false; }
     }
     function showMemberSelect() {
         document.getElementById('stepMember').style.display = 'block';
@@ -145,7 +146,7 @@
         try {
             await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "commitMembers", tableName: table, roundNum: (gData.completedRounds[table] || 0) + 1, players: names }) });
             fetchInitialData(() => initView());
-        } catch (e) { alert("エラー"); btn.disabled = false; }
+        } catch (e) { alert("確定エラー"); btn.disabled = false; }
     }
     async function submitScores() {
         const table = document.getElementById('tableSelect').value;
@@ -168,7 +169,7 @@
             document.getElementById('tableSelect').value = "";
             document.getElementById('stepScore').style.display = 'none';
             fetchInitialData();
-        } catch (e) { alert("エラー"); btn.disabled = false; }
+        } catch (e) { alert("送信エラー"); btn.disabled = false; }
     }
 </script>
 </body>
