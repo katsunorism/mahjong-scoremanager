@@ -19,6 +19,7 @@
         button:disabled { background: #ccc; }
         .btn-cancel { background: #6c757d; padding: 10px; font-size: 14px; margin-top: 10px; width: 100%; color: white; border: none; border-radius: 8px; cursor: pointer; }
         .btn-late { background: #5f6368; padding: 12px; font-size: 15px; width: 100%; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-finish { background: #b06000; padding: 12px; font-size: 15px; width: 100%; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
         .minus-btn { width: 44px; padding: 0; font-size: 18px; background: #6c757d; flex: none; }
         .status-box { padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: center; color: #1a73e8; background: #e8f0fe; border: 2px solid #1a73e8; font-weight: bold; font-size: 0.9em; }
         .status-sub { font-size: 0.8em; display: block; margin-top: 2px; }
@@ -65,6 +66,7 @@
 
 <div id="lateOpenArea" style="max-width:500px; margin:15px auto;">
     <button class="btn-late" onclick="openLateInput()">終了済みゲームのスコア入力</button>
+    <button id="finishBtn" class="btn-finish" onclick="openChipInput()" style="margin-top:10px;">大会終了（チップ入力）</button>
 </div>
 
 <div id="lateCard" class="card" style="display:none; margin-top:15px;">
@@ -93,6 +95,29 @@
     </div>
 </div>
 
+<div id="chipCard" class="card" style="display:none; margin-top:15px;">
+    <h3>大会終了 － チップ入力</h3>
+    <div id="chipAuth">
+        <label style="font-size:0.85em; font-weight:bold; display:block; margin-bottom:4px;">合言葉</label>
+        <input type="password" id="chipPassword" placeholder="合言葉を入力" style="margin-bottom:10px;">
+        <div class="late-actions">
+            <button onclick="verifyChipPassword()">認証</button>
+            <button class="btn-cancel" onclick="backToMain()">閉じる</button>
+        </div>
+    </div>
+    <div id="chipBody" style="display:none;">
+        <div id="chipStatus" class="status-box">
+            <span id="chipMain">チップ合計: 0枚</span>
+            <span id="chipSub" class="status-sub">増減の合計が0になるようにしてください</span>
+        </div>
+        <div id="chipInputs" class="score-grid"></div>
+        <div class="late-actions">
+            <button id="chipSubmitBtn" onclick="submitChips()">最終スコアを確定</button>
+            <button class="btn-cancel" onclick="closeChipInput()">閉じる</button>
+        </div>
+    </div>
+</div>
+
 <div class="link-container">
     <a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit#gid=1001959891" target="_blank" class="external-link">スコア表を見る</a>
     <a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit?gid=1215317715#gid=1215317715" target="_blank" class="external-link">ルール確認</a>
@@ -112,6 +137,8 @@
             const sel = document.getElementById('tableSelect');
             sel.options[0].text = "卓を選択してください";
             sel.disabled = false;
+            // チップ制が無効なら大会終了ボタンを隠す
+            document.getElementById('finishBtn').style.display = gData.useChip ? 'block' : 'none';
             if (callback) callback();
         } catch (e) {
             alert("通信エラー：GAS側のデプロイ設定を確認してください");
@@ -366,6 +393,7 @@
 
     function backToMain() {
         document.getElementById('lateCard').style.display = 'none';
+        document.getElementById('chipCard').style.display = 'none';
         document.getElementById('mainCard').style.display = 'block';
         document.getElementById('lateOpenArea').style.display = 'block';
 
@@ -464,6 +492,148 @@
             fetchInitialData();
         } catch (e) {
             alert("登録エラー: " + e.message);
+            btn.disabled = false;
+        }
+    }
+
+    // ========== チップ入力フロー ==========
+
+    let chipPassword = "";
+
+    function openChipInput() {
+        if (!gData.useChip) {
+            return alert("このルールではチップ制が無効です。\nrulesシートの設定を確認してください。");
+        }
+        document.getElementById('mainCard').style.display = 'none';
+        document.getElementById('lateOpenArea').style.display = 'none';
+        document.getElementById('chipCard').style.display = 'block';
+        document.getElementById('chipAuth').style.display = 'block';
+        document.getElementById('chipBody').style.display = 'none';
+        document.getElementById('chipPassword').value = "";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function closeChipInput() {
+        const hasInput = Array.from(document.querySelectorAll('.chip-count')).some(i => i.value !== "");
+        if (hasInput && !confirm("入力内容は破棄されます。閉じますか？")) return;
+        chipPassword = "";
+        backToMain();
+    }
+
+    async function verifyChipPassword() {
+        const pw = document.getElementById('chipPassword').value;
+        if (!pw) return alert("合言葉を入力してください");
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: "verifyPassword", password: pw })
+            });
+            const result = await res.json();
+            if (result.status === "error") throw new Error(result.message);
+            chipPassword = pw;
+            document.getElementById('chipAuth').style.display = 'none';
+            document.getElementById('chipBody').style.display = 'block';
+            document.getElementById('chipSubmitBtn').disabled = false;
+            buildChipInputs();
+        } catch (e) {
+            alert(e.message);
+        }
+    }
+
+    function buildChipInputs() {
+        const container = document.getElementById('chipInputs');
+        container.innerHTML = "";
+        const existing = gData.chips || {};
+        (gData.playerNames || []).forEach(name => {
+            const div = document.createElement('div');
+            div.className = "player-box";
+
+            const label = document.createElement('span');
+            label.className = "player-label";
+            label.textContent = name;
+
+            const wrap = document.createElement('div');
+            wrap.className = "input-wrap";
+
+            const input = document.createElement('input');
+            input.type = "number";
+            input.className = "chip-count";
+            input.setAttribute('data-name', name);
+            input.setAttribute('inputmode', 'numeric');
+            input.placeholder = "0";
+            input.value = existing[name] !== undefined ? existing[name] : "";
+            input.oninput = calcChipTotal;
+            input.style.flex = "1";
+
+            const minusBtn = document.createElement('button');
+            minusBtn.textContent = "±";
+            minusBtn.type = "button";
+            minusBtn.className = "minus-btn";
+            minusBtn.onclick = function() {
+                const v = input.value;
+                if (v === "" || Number(v) === 0) return;
+                input.value = String(-Number(v));
+                calcChipTotal();
+            };
+
+            wrap.appendChild(input);
+            wrap.appendChild(minusBtn);
+            div.appendChild(label);
+            div.appendChild(wrap);
+            container.appendChild(div);
+        });
+        calcChipTotal();
+    }
+
+    function calcChipTotal() {
+        const inputs = document.querySelectorAll('.chip-count');
+        let total = 0;
+        inputs.forEach(i => total += (i.value === "" ? 0 : Number(i.value)));
+        const main = document.getElementById('chipMain');
+        const sub = document.getElementById('chipSub');
+        const box = document.getElementById('chipStatus');
+        main.textContent = "チップ合計: " + total + "枚";
+        if (total === 0) {
+            sub.textContent = "OK";
+            box.className = "status-box diff-ok";
+        } else {
+            sub.textContent = "増減の合計が0になるようにしてください";
+            box.className = "status-box diff-plus";
+        }
+    }
+
+    async function submitChips() {
+        const inputs = document.querySelectorAll('.chip-count');
+        const chips = {};
+        let total = 0;
+        inputs.forEach(i => {
+            const v = i.value === "" ? 0 : Number(i.value);
+            chips[i.getAttribute('data-name')] = v;
+            total += v;
+        });
+        if (total !== 0) {
+            if (!confirm("チップ増減の合計が0になっていません（" + total + "枚）。\nこのまま確定しますか？")) return;
+        }
+        if (!confirm("最終スコアを確定します。よろしいですか？")) return;
+
+        const btn = document.getElementById('chipSubmitBtn');
+        btn.disabled = true;
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: "submitChips", password: chipPassword, chips: chips })
+            });
+            const result = await res.json();
+            if (result.status === "error") throw new Error(result.message);
+            alert("最終スコアを確定しました！");
+            chipPassword = "";
+            backToMain();
+            btn.disabled = false;
+            fetchInitialData();
+        } catch (e) {
+            alert("確定エラー: " + e.message);
             btn.disabled = false;
         }
     }
