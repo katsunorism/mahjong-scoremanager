@@ -39,7 +39,7 @@
 <body>
 <div class="header-title">カテコミュpresents～第1回麻雀合宿～</div>
 
-<div class="card">
+<div class="card" id="mainCard">
     <select id="tableSelect" onchange="initView()" disabled style="margin-bottom:15px;">
         <option value="">データ取得中...</option>
         <option value="A">A卓</option>
@@ -63,7 +63,7 @@
     </div>
 </div>
 
-<div style="max-width:500px; margin:15px auto;">
+<div id="lateOpenArea" style="max-width:500px; margin:15px auto;">
     <button class="btn-late" onclick="openLateInput()">終了済みゲームのスコア入力</button>
 </div>
 
@@ -345,16 +345,35 @@
     // ========== 後追い入力フロー ==========
 
     function openLateInput() {
+        // 通常フローを隠す
+        document.getElementById('mainCard').style.display = 'none';
+        document.getElementById('lateOpenArea').style.display = 'none';
+
         document.getElementById('lateCard').style.display = 'block';
         document.getElementById('lateSubmitBtn').disabled = false;
         document.getElementById('lateTable').onchange = updateLateRound;
         updateLateRound();
         buildLateInputs();
-        document.getElementById('lateCard').scrollIntoView({ behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function closeLateInput() {
+        const hasInput = Array.from(document.querySelectorAll('.late-score')).some(i => i.value !== "")
+            || Array.from(document.querySelectorAll('.late-name')).some(s => s.value !== "");
+        if (hasInput && !confirm("入力内容は破棄されます。閉じますか？")) return;
+        backToMain();
+    }
+
+    function backToMain() {
         document.getElementById('lateCard').style.display = 'none';
+        document.getElementById('mainCard').style.display = 'block';
+        document.getElementById('lateOpenArea').style.display = 'block';
+
+        // 通常フローの表示状態を初期化
+        document.getElementById('tableSelect').value = "";
+        document.getElementById('stepMember').style.display = 'none';
+        document.getElementById('stepScore').style.display = 'none';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function updateLateRound() {
@@ -440,7 +459,7 @@
             const result = await res.json();
             if (result.status === "error") throw new Error(result.message);
             alert("登録完了！");
-            closeLateInput();
+            backToMain();
             btn.disabled = false;
             fetchInitialData();
         } catch (e) {
