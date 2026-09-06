@@ -18,46 +18,84 @@
         button { width: 100%; padding: 16px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
         button:disabled { background: #ccc; }
         .btn-cancel { background: #6c757d; padding: 10px; font-size: 14px; margin-top: 10px; width: 100%; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        #scoreStatus { background: #e8f0fe; padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: center; color: #1a73e8; border: 2px solid #1a73e8; font-weight: bold; font-size: 0.9em; }
-        #scoreSub { font-size: 0.8em; display: block; margin-top: 2px; }
+        .btn-late { background: #5f6368; padding: 12px; font-size: 15px; width: 100%; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .minus-btn { width: 44px; padding: 0; font-size: 18px; background: #6c757d; flex: none; }
+        .status-box { padding: 10px; border-radius: 10px; margin-bottom: 10px; text-align: center; color: #1a73e8; background: #e8f0fe; border: 2px solid #1a73e8; font-weight: bold; font-size: 0.9em; }
+        .status-sub { font-size: 0.8em; display: block; margin-top: 2px; }
         .diff-minus { color: #1a73e8 !important; background: #e8f0fe !important; border-color: #1a73e8 !important; }
         .diff-plus { color: #d93025 !important; background: #fce8e6 !important; border-color: #d93025 !important; }
         .diff-ok { color: #2e7d32 !important; background: #e6f4ea !important; border-color: #2e7d32 !important; }
         .link-container { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 500px; margin: 25px auto 10px auto; }
         .external-link { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.9em; color: #1a73e8; text-decoration: none; font-weight: bold; border: 2px solid #1a73e8; padding: 12px 5px; border-radius: 8px; background: white; }
+        .late-header { display: flex; gap: 10px; margin-bottom: 10px; }
+        .late-header > div { flex: 1; }
+        .late-header label { font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 4px; }
+        .input-wrap { display: flex; gap: 5px; }
     </style>
 </head>
 <body>
 <div class="header-title">カテコミュpresents～第1回麻雀合宿～</div>
+
 <div class="card">
     <select id="tableSelect" onchange="initView()" disabled style="margin-bottom:15px;">
         <option value="">データ取得中...</option>
         <option value="A">A卓</option>
         <option value="B">B卓</option>
     </select>
+
     <div id="stepMember" style="display:none;">
         <h3>メンバー選定</h3>
         <div id="memberSelects" style="margin-bottom:10px;"></div>
         <button id="startBtn" onclick="startMatch()">対局開始</button>
     </div>
+
     <div id="stepScore" style="display:none;">
-        <div id="scoreStatus">
+        <div id="scoreStatus" class="status-box">
             <span id="scoreMain">合計: 0</span>
-            <span id="scoreSub"></span>
+            <span id="scoreSub" class="status-sub"></span>
         </div>
         <button id="submitBtn" onclick="submitScores()">スコア送信</button>
         <button id="cancelBtn" class="btn-cancel" onclick="cancelSelection()">メンバーを修正する</button>
         <div id="scoreInputs" class="score-grid"></div>
     </div>
 </div>
+
+<div style="max-width:500px; margin:15px auto;">
+    <button class="btn-late" onclick="openLateInput()">終了済みゲームのスコア入力</button>
+</div>
+
+<div id="lateCard" class="card" style="display:none; margin-top:15px;">
+    <h3>終了済みゲームのスコア入力</h3>
+    <div class="late-header">
+        <div>
+            <label>卓</label>
+            <select id="lateTable">
+                <option value="A">A卓</option>
+                <option value="B">B卓</option>
+            </select>
+        </div>
+        <div>
+            <label>回戦</label>
+            <input type="number" id="lateRound" inputmode="numeric" min="1">
+        </div>
+    </div>
+    <div id="lateStatus" class="status-box">
+        <span id="lateMain">合計: 0</span>
+        <span id="lateSub" class="status-sub"></span>
+    </div>
+    <button id="lateSubmitBtn" onclick="submitLateScores()">この対局を登録</button>
+    <button class="btn-cancel" onclick="closeLateInput()">閉じる</button>
+    <div id="lateInputs" class="score-grid"></div>
+</div>
+
 <div class="link-container">
     <a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit#gid=1001959891" target="_blank" class="external-link">スコア表を見る</a>
     <a href="https://docs.google.com/spreadsheets/d/1OlJXvpZezA6bFdD9gqIrBR6ZBkb9MaXYQ6hl_eT-dq4/edit?gid=1215317715#gid=1215317715" target="_blank" class="external-link">ルール確認</a>
 </div>
 
 <script>
-    // 確定したGASデプロイURL
-    const GAS_URL = "https://script.google.com/macros/s/AKfycby70UbRYGxpboOs58NIAFuGXZvzsL1N3oiU4p7VOLC2Ica_NUu8udrTze1Gdxuo7ud9iw/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycby70UbRYGxpboOs58NIAFuGXZvzsL1N3oiU4p7VOLC2Ica_NUu8udrTze1Gdxuo7ud9iw/exec";
+    const SEATS = ["東", "南", "西", "北"];
     let gData = {};
 
     window.onload = function() { fetchInitialData(); };
@@ -69,16 +107,70 @@
             const sel = document.getElementById('tableSelect');
             sel.options[0].text = "卓を選択してください";
             sel.disabled = false;
-            if(callback) callback();
-        } catch (e) { alert("通信エラー：GAS側のデプロイ設定を確認してください"); }
+            if (callback) callback();
+        } catch (e) {
+            alert("通信エラー：GAS側のデプロイ設定を確認してください");
+        }
     }
+
+    // ±ボタン付き数値入力を生成する共通関数
+    function createScoreInput(className, dataName, onInputFn) {
+        const wrap = document.createElement('div');
+        wrap.className = "input-wrap";
+
+        const input = document.createElement('input');
+        input.type = "number";
+        input.className = className;
+        if (dataName !== null) input.setAttribute('data-name', dataName);
+        input.setAttribute('inputmode', 'numeric');
+        input.placeholder = "0";
+        input.oninput = onInputFn;
+        input.style.flex = "1";
+
+        const minusBtn = document.createElement('button');
+        minusBtn.textContent = "±";
+        minusBtn.type = "button";
+        minusBtn.className = "minus-btn";
+        minusBtn.onclick = function() {
+            const v = input.value;
+            if (v === "" || Number(v) === 0) return;
+            input.value = String(-Number(v));
+            onInputFn();
+        };
+
+        wrap.appendChild(input);
+        wrap.appendChild(minusBtn);
+        return wrap;
+    }
+
+    // 合計表示の共通更新関数
+    function renderTotal(total, mainEl, subEl, boxEl) {
+        const diff = 100000 - total;
+        mainEl.textContent = "合計: " + total.toLocaleString();
+        if (diff > 0) {
+            subEl.textContent = "(不足: " + diff.toLocaleString() + ")";
+            boxEl.className = "status-box diff-minus";
+        } else if (diff < 0) {
+            subEl.textContent = "(超過: " + Math.abs(diff).toLocaleString() + ")";
+            boxEl.className = "status-box diff-plus";
+        } else {
+            mainEl.textContent = "合計: 100,000 (OK!)";
+            subEl.textContent = "";
+            boxEl.className = "status-box diff-ok";
+        }
+    }
+
+    // ========== 通常フロー ==========
 
     function initView() {
         const table = document.getElementById('tableSelect').value;
         if (!table || !gData.tableStatus) return;
         const status = gData.tableStatus[table];
-        if (status && status.players && status.players.length === 4) { showScoreInput(status.players); } 
-        else { showMemberSelect(); }
+        if (status && status.players && status.players.length === 4) {
+            showScoreInput(status.players);
+        } else {
+            showMemberSelect();
+        }
     }
 
     async function cancelSelection() {
@@ -87,21 +179,37 @@
         const btn = document.getElementById('cancelBtn');
         btn.disabled = true;
         try {
-            await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "cancelMatch", tableName: table }) });
+            await fetch(GAS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({ action: "cancelMatch", tableName: table })
+            });
             fetchInitialData(() => initView());
-        } catch (e) { alert("エラーが発生しました"); btn.disabled = false; }
+            btn.disabled = false;
+        } catch (e) {
+            alert("エラーが発生しました");
+            btn.disabled = false;
+        }
     }
 
     function showMemberSelect() {
         document.getElementById('stepMember').style.display = 'block';
         document.getElementById('stepScore').style.display = 'none';
+        document.getElementById('startBtn').disabled = false;
         const container = document.getElementById('memberSelects');
         container.innerHTML = "";
-        const SEATS = ["東", "南", "西", "北"];
         SEATS.forEach(seat => {
             const div = document.createElement('div');
             div.style.marginBottom = "8px";
-            div.innerHTML = `<label style="font-size:0.85em; font-weight:bold;">${seat}家</label><select class="p-name" onchange="syncSelects()"><option value="">選択</option></select>`;
+            const label = document.createElement('label');
+            label.style.cssText = "font-size:0.85em; font-weight:bold;";
+            label.textContent = seat + "家";
+            const sel = document.createElement('select');
+            sel.className = "p-name";
+            sel.onchange = syncSelects;
+            sel.add(new Option("選択", ""));
+            div.appendChild(label);
+            div.appendChild(sel);
             container.appendChild(div);
         });
         syncSelects();
@@ -112,92 +220,85 @@
         const busy = gData.busyPlayers || [];
         const selected = Array.from(selects).map(s => s.value).filter(v => v !== "");
         selects.forEach(sel => {
-            const cur = sel.value; sel.innerHTML = '<option value="">選択</option>';
-            gData.playerNames.forEach(n => {
+            const cur = sel.value;
+            sel.innerHTML = '<option value="">選択</option>';
+            (gData.playerNames || []).forEach(n => {
                 if (!busy.includes(n) || n === cur) {
                     if (!selected.includes(n) || n === cur) {
-                        const opt = new Option(n, n); if (n === cur) opt.selected = true; sel.add(opt);
+                        const opt = new Option(n, n);
+                        if (n === cur) opt.selected = true;
+                        sel.add(opt);
                     }
                 }
             });
         });
     }
 
-    // XSS対策：textContentとappendChildを使用
     function showScoreInput(players) {
         document.getElementById('stepMember').style.display = 'none';
         document.getElementById('stepScore').style.display = 'block';
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('cancelBtn').disabled = false;
         const container = document.getElementById('scoreInputs');
-        container.innerHTML = ""; 
+        container.innerHTML = "";
         players.forEach(name => {
-            const div = document.createElement('div'); 
+            const div = document.createElement('div');
             div.className = "player-box";
-    
             const label = document.createElement('span');
             label.className = "player-label";
             label.textContent = name;
-    
-            const wrap = document.createElement('div');
-            wrap.style.display = "flex";
-            wrap.style.gap = "5px";
-    
-            const input = document.createElement('input');
-            input.type = "number";
-            input.className = "p-score";
-            input.setAttribute('data-name', name);
-            input.setAttribute('inputmode', 'numeric');
-            input.placeholder = "0";
-            input.oninput = calcTotal;
-            input.style.flex = "1";
-    
-            // マイナス切り替えボタン
-            const minusBtn = document.createElement('button');
-            minusBtn.textContent = "±";
-            minusBtn.type = "button";
-            minusBtn.style.cssText = "width:44px; padding:0; font-size:18px; background:#6c757d;";
-            minusBtn.onclick = function() {
-                const v = input.value;
-                if (v === "" || v === "0") return;
-                input.value = String(-Number(v));
-                calcTotal();
-            };
-
-        wrap.appendChild(input);
-        wrap.appendChild(minusBtn);
-        div.appendChild(label);
-        div.appendChild(wrap);
-        container.appendChild(div);
-    });
-    calcTotal();
-}
+            div.appendChild(label);
+            div.appendChild(createScoreInput("p-score", name, calcTotal));
+            container.appendChild(div);
+        });
+        calcTotal();
+    }
 
     function calcTotal() {
         const inputs = document.querySelectorAll('.p-score');
         let total = 0;
         inputs.forEach(i => total += (i.value === "" ? 0 : Number(i.value)));
-        const diff = 100000 - total;
-        const main = document.getElementById('scoreMain'), sub = document.getElementById('scoreSub'), statusBox = document.getElementById('scoreStatus');
-        main.textContent = `合計: ${total.toLocaleString()}`;
-        if (diff > 0) { sub.textContent = `(不足: ${diff.toLocaleString()})`; statusBox.className = "diff-minus"; }
-        else if (diff < 0) { sub.textContent = `(超過: ${Math.abs(diff).toLocaleString()})`; statusBox.className = "diff-plus"; }
-        else { main.textContent = `合計: 100,000 (OK!)`; sub.textContent = ""; statusBox.className = "diff-ok"; }
+        renderTotal(
+            total,
+            document.getElementById('scoreMain'),
+            document.getElementById('scoreSub'),
+            document.getElementById('scoreStatus')
+        );
     }
 
     async function startMatch() {
         const table = document.getElementById('tableSelect').value;
         const names = Array.from(document.querySelectorAll('.p-name')).map(s => s.value);
         if (names.includes("")) return alert("4名選んでください");
-        const btn = document.getElementById('startBtn'); btn.disabled = true;
+        if (new Set(names).size !== 4) return alert("名前が重複しています");
+        const btn = document.getElementById('startBtn');
+        btn.disabled = true;
         try {
-            await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "commitMembers", tableName: table, roundNum: (gData.completedRounds[table] || 0) + 1, players: names }) });
+            await fetch(GAS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({
+                    action: "commitMembers",
+                    tableName: table,
+                    roundNum: (gData.completedRounds[table] || 0) + 1,
+                    players: names
+                })
+            });
             fetchInitialData(() => initView());
-        } catch (e) { alert("確定エラー"); btn.disabled = false; }
+        } catch (e) {
+            alert("確定エラー");
+            btn.disabled = false;
+        }
     }
 
     async function submitScores() {
         const table = document.getElementById('tableSelect').value;
+        if (!gData.tableStatus || !gData.tableStatus[table]) {
+            return alert("データ同期に問題があります。ページを再読み込みしてください。");
+        }
         const inputs = document.querySelectorAll('.p-score');
-        const players = []; let total = 0;
+        const players = [];
+        let total = 0;
         for (let input of inputs) {
             const val = input.value === "" ? NaN : Number(input.value);
             if (isNaN(val)) return alert("未入力があります");
@@ -206,16 +307,141 @@
         }
         if (total !== 100000) return alert("100,000点にしてください");
         if (!confirm("送信しますか？")) return;
-        const btn = document.getElementById('submitBtn'); btn.disabled = true;
-        const date = new Date().toISOString().slice(0,10).replace(/-/g, "");
-        const matchId = `${date}-${String(gData.tableStatus[table].round).padStart(2, '0')}-${table}`;
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const matchId = date + "-" + String(gData.tableStatus[table].round).padStart(2, '0') + "-" + table;
         try {
-            await fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ action: "processFromWeb", matchId: matchId, tableName: table + "卓", players: players }) });
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({
+                    action: "processFromWeb",
+                    matchId: matchId,
+                    tableName: table + "卓",
+                    players: players
+                })
+            });
+            const result = await res.json();
+            if (result.status === "error") throw new Error(result.message);
             alert("送信完了！");
             document.getElementById('tableSelect').value = "";
             document.getElementById('stepScore').style.display = 'none';
+            document.getElementById('stepMember').style.display = 'none';
+            btn.disabled = false;
             fetchInitialData();
-        } catch (e) { alert("送信エラー"); btn.disabled = false; }
+        } catch (e) {
+            alert("送信エラー: " + e.message);
+            btn.disabled = false;
+        }
+    }
+
+    // ========== 後追い入力フロー ==========
+
+    function openLateInput() {
+        document.getElementById('lateCard').style.display = 'block';
+        document.getElementById('lateSubmitBtn').disabled = false;
+        document.getElementById('lateTable').onchange = updateLateRound;
+        updateLateRound();
+        buildLateInputs();
+        document.getElementById('lateCard').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function closeLateInput() {
+        document.getElementById('lateCard').style.display = 'none';
+    }
+
+    function updateLateRound() {
+        const t = document.getElementById('lateTable').value;
+        const max = (gData.completedRounds && gData.completedRounds[t]) || 0;
+        document.getElementById('lateRound').value = max + 1;
+    }
+
+    function buildLateInputs() {
+        const container = document.getElementById('lateInputs');
+        container.innerHTML = "";
+        SEATS.forEach(seat => {
+            const div = document.createElement('div');
+            div.className = "player-box";
+
+            const label = document.createElement('span');
+            label.className = "player-label";
+            label.textContent = seat + "家";
+
+            const sel = document.createElement('select');
+            sel.className = "late-name";
+            sel.style.marginBottom = "5px";
+            sel.add(new Option("選択", ""));
+            (gData.playerNames || []).forEach(n => sel.add(new Option(n, n)));
+
+            div.appendChild(label);
+            div.appendChild(sel);
+            div.appendChild(createScoreInput("late-score", null, calcLateTotal));
+            container.appendChild(div);
+        });
+        calcLateTotal();
+    }
+
+    function calcLateTotal() {
+        const inputs = document.querySelectorAll('.late-score');
+        let total = 0;
+        inputs.forEach(i => total += (i.value === "" ? 0 : Number(i.value)));
+        renderTotal(
+            total,
+            document.getElementById('lateMain'),
+            document.getElementById('lateSub'),
+            document.getElementById('lateStatus')
+        );
+    }
+
+    async function submitLateScores() {
+        const table = document.getElementById('lateTable').value;
+        const round = parseInt(document.getElementById('lateRound').value, 10);
+        if (!round || round < 1) return alert("回戦番号を入力してください");
+
+        const names = Array.from(document.querySelectorAll('.late-name')).map(s => s.value);
+        if (names.includes("")) return alert("4名選んでください");
+        if (new Set(names).size !== 4) return alert("名前が重複しています");
+
+        const inputs = document.querySelectorAll('.late-score');
+        const players = [];
+        let total = 0;
+        for (let i = 0; i < inputs.length; i++) {
+            const val = inputs[i].value === "" ? NaN : Number(inputs[i].value);
+            if (isNaN(val)) return alert("未入力のスコアがあります");
+            players.push({ name: names[i], rawScore: val });
+            total += val;
+        }
+        if (total !== 100000) return alert("100,000点にしてください");
+        if (!confirm(table + "卓 第" + round + "回戦として登録しますか？")) return;
+
+        const btn = document.getElementById('lateSubmitBtn');
+        btn.disabled = true;
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const matchId = date + "-" + String(round).padStart(2, '0') + "-" + table;
+        try {
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "text/plain" },
+                body: JSON.stringify({
+                    action: "processFromWeb",
+                    matchId: matchId,
+                    tableName: table + "卓",
+                    players: players,
+                    isLate: true
+                })
+            });
+            const result = await res.json();
+            if (result.status === "error") throw new Error(result.message);
+            alert("登録完了！");
+            closeLateInput();
+            btn.disabled = false;
+            fetchInitialData();
+        } catch (e) {
+            alert("登録エラー: " + e.message);
+            btn.disabled = false;
+        }
     }
 </script>
 </body>
