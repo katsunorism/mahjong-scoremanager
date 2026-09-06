@@ -31,6 +31,9 @@
         .late-header > div { flex: 1; }
         .late-header label { font-size: 0.85em; font-weight: bold; display: block; margin-bottom: 4px; }
         .input-wrap { display: flex; gap: 5px; }
+        .late-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .late-actions button { margin-top: 0; }
+        .late-actions .btn-cancel { padding: 16px; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -83,9 +86,11 @@
         <span id="lateMain">合計: 0</span>
         <span id="lateSub" class="status-sub"></span>
     </div>
-    <button id="lateSubmitBtn" onclick="submitLateScores()">この対局を登録</button>
-    <button class="btn-cancel" onclick="closeLateInput()">閉じる</button>
     <div id="lateInputs" class="score-grid"></div>
+    <div class="late-actions">
+        <button id="lateSubmitBtn" onclick="submitLateScores()">この対局を登録</button>
+        <button class="btn-cancel" onclick="closeLateInput()">閉じる</button>
+    </div>
 </div>
 
 <div class="link-container">
