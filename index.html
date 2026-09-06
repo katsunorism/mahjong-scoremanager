@@ -132,11 +132,15 @@
         players.forEach(name => {
             const div = document.createElement('div'); 
             div.className = "player-box";
-
+    
             const label = document.createElement('span');
             label.className = "player-label";
             label.textContent = name;
-
+    
+            const wrap = document.createElement('div');
+            wrap.style.display = "flex";
+            wrap.style.gap = "5px";
+    
             const input = document.createElement('input');
             input.type = "number";
             input.className = "p-score";
@@ -144,13 +148,28 @@
             input.setAttribute('inputmode', 'numeric');
             input.placeholder = "0";
             input.oninput = calcTotal;
+            input.style.flex = "1";
+    
+            // マイナス切り替えボタン
+            const minusBtn = document.createElement('button');
+            minusBtn.textContent = "±";
+            minusBtn.type = "button";
+            minusBtn.style.cssText = "width:44px; padding:0; font-size:18px; background:#6c757d;";
+            minusBtn.onclick = function() {
+                const v = input.value;
+                if (v === "" || v === "0") return;
+                input.value = String(-Number(v));
+                calcTotal();
+            };
 
-            div.appendChild(label);
-            div.appendChild(input);
-            container.appendChild(div);
-        });
-        calcTotal();
-    }
+        wrap.appendChild(input);
+        wrap.appendChild(minusBtn);
+        div.appendChild(label);
+        div.appendChild(wrap);
+        container.appendChild(div);
+    });
+    calcTotal();
+}
 
     function calcTotal() {
         const inputs = document.querySelectorAll('.p-score');
